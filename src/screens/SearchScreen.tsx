@@ -3,23 +3,25 @@ import React, {useState} from "react";
 import {useLazyQuery} from "@apollo/client";
 import {GET_WEATHER_QUERY} from "../agent";
 import useStorge from "../hooks/useStorge";
-import {RootScreen} from "../components";
+import {CustomInput, RootScreen, Typography} from "../components";
+import {COLORS, SCALE, SIZES, FONTS, ICONS} from "../constants";
+
+const {s, vs, ms, mvs} = SCALE;
+const {SearchIcon} = ICONS;
 
 const SearchScreen = () => {
   const [citySearched, setCitySearched] = useState("");
-  const [cashedData, setCashedData] = useState<boolean>(false);
 
   const [getWeather, {data, error}] = useLazyQuery(GET_WEATHER_QUERY, {
     variables: {name: citySearched},
   });
-  const {clearStorage, readData, saveData} = useStorge();
+  const {readData, saveData, storge} = useStorge();
 
   const handleOnSearch = async () => {
     const storedData = await readData(citySearched);
-    console.log("chasdasdasd", storedData.name);
+    console.log("chasdasdasd", storedData);
 
-    if (storedData) {
-      setCashedData(storedData);
+    if (storge[citySearched]) {
     } else {
       getWeather().then(res => {
         saveData(
@@ -29,21 +31,55 @@ const SearchScreen = () => {
       });
     }
   };
+  if (data) {
+    console.log("dddddddd", data.weatherByCity);
+  }
 
   return (
-    <RootScreen>
-      <TextInput
+    <RootScreen style={styles.root}>
+      <CustomInput
         onChangeText={text => setCitySearched(text)}
-        style={{borderWidth: 1, borderColor: "red"}}
+        btnIcon={<SearchIcon width={s(22)} height={s(22)} />}
+        value={citySearched}
+        onPress={handleOnSearch}
       />
 
-      <Button title="search" onPress={handleOnSearch} />
+      {error && (
+        <View style={styles.errorConatiner}>
+          <Typography style={styles.errorText}>
+            there is no city with this name
+          </Typography>
+        </View>
+      )}
 
-      {data ? <View></View> : <></>}
+      {(data || storge[citySearched]) && <View></View>}
     </RootScreen>
   );
 };
 
 export default SearchScreen;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  root: {
+    paddingHorizontal: ms(SIZES.padding),
+    paddingTop: mvs(SIZES.margin),
+  },
+  row: {
+    flexDirection: "row",
+    width: "100%",
+    justifyContent: "space-between",
+  },
+  errorConatiner: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: ms(SIZES.base),
+    paddingVertical: mvs(SIZES.padding),
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+    marginTop: mvs(SIZES.base * 5),
+  },
+  errorText: {
+    ...FONTS.h3,
+    color: COLORS.danger,
+  },
+});

@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 
 const useStorge = () => {
-  const [storge, setStorge] = useState({});
+  const [storge, setStorge] = useState<{[x: string]: any}>({});
   const importData = async () => {
     try {
       const result: any = {};
@@ -23,6 +23,7 @@ const useStorge = () => {
     try {
       const jsonValue = JSON.stringify(value);
       await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
+      setStorge(prev => ({...prev, value}));
       console.log("data save ");
     } catch (e) {
       console.log("Failed to  save data ");
@@ -46,10 +47,6 @@ const useStorge = () => {
       console.log("Failed to clear the async storage.");
     }
   };
-
-  // useEffect(() => {
-  //   importData();
-  // }, []);
 
   return {importData, storge, saveData, readData, clearStorage};
 };
