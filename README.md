@@ -1,14 +1,17 @@
-# GawkNow 
+# GawkNow
 
 - is the Best Weather App in the world
 
+## Server url 
+- https://github.com/Mohamed0thman/GawkGraphql
+
+
 ## Features
 
-- a 
-- home page showing all transaction data
-- sort data by date using caustom hooks
-- insert transaction details using react form hooks and yap for validation
-- add Visual representation (chart)
+- splash screen
+- onboading screen
+- search screen for search about city weather
+- custom hook save data loacal to enhance performance and offline usage.
 
 ## Available Scripts
 
