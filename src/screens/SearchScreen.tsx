@@ -1,85 +1,145 @@
-import {StyleSheet, TextInput, View, Button} from "react-native";
+import {
+  StyleSheet,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from "react-native";
 import React, {useState} from "react";
 import {useLazyQuery} from "@apollo/client";
 import {GET_WEATHER_QUERY} from "../agent";
 import useStorge from "../hooks/useStorge";
-import {CustomInput, RootScreen, Typography} from "../components";
+import {CustomInput, RootScreen, Row, Spinner, Typography} from "../components";
 import {COLORS, SCALE, SIZES, FONTS, ICONS} from "../constants";
+import {showMessage} from "react-native-flash-message";
+import {WeatherResponse} from "../type";
 
-const {s, vs, ms, mvs} = SCALE;
+const {s, ms, mvs} = SCALE;
 const {SearchIcon} = ICONS;
 
 const SearchScreen = () => {
   const [citySearched, setCitySearched] = useState("");
+  const [data, setDate] = useState<WeatherResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const [getWeather, {data, error}] = useLazyQuery(GET_WEATHER_QUERY, {
+  const [getWeather] = useLazyQuery(GET_WEATHER_QUERY, {
     variables: {name: citySearched},
   });
-  const {readData, saveData, storge} = useStorge();
+
+  const {saveData, storge} = useStorge();
 
   const handleOnSearch = async () => {
-    const storedData = await readData(citySearched);
-    console.log("chasdasdasd", storedData);
-
-    if (storge[citySearched]) {
-    } else {
-      getWeather().then(res => {
-        saveData(
-          (res.data.weatherByCity.name as string).toLowerCase(),
-          res.data.weatherByCity,
-        );
+    if (!citySearched.length) {
+      showMessage({
+        message: "add city name",
+        type: "danger",
       });
+      return;
+    }
+
+    setDate(null);
+    Keyboard.dismiss();
+    if (storge[citySearched]) {
+      setDate(storge[citySearched]);
+    } else {
+      setLoading(true);
+
+      getWeather()
+        .then(res => {
+          if (res?.data?.weatherByCity) {
+            setDate(res.data.weatherByCity);
+            saveData(
+              (res.data.weatherByCity.name as string).toLowerCase(),
+              res.data.weatherByCity,
+            );
+          }
+        })
+        .finally(() => setLoading(false));
     }
   };
-  if (data) {
-    console.log("dddddddd", data.weatherByCity);
-  }
 
   return (
-    <RootScreen style={styles.root}>
-      <CustomInput
-        onChangeText={text => setCitySearched(text)}
-        btnIcon={<SearchIcon width={s(22)} height={s(22)} />}
-        value={citySearched}
-        onPress={handleOnSearch}
-      />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.inner}>
+          <RootScreen style={styles.root}>
+            <CustomInput
+              onChangeText={text => setCitySearched(text)}
+              btnIcon={
+                <SearchIcon width={s(22)} height={s(22)} fill={COLORS.white} />
+              }
+              value={citySearched}
+              onPress={handleOnSearch}
+            />
 
-      {error && (
-        <View style={styles.errorConatiner}>
-          <Typography style={styles.errorText}>
-            there is no city with this name
-          </Typography>
+            {loading && <Spinner />}
+
+            {data && (
+              <View style={styles.resultConatiner}>
+                <Row justifyContent="space-between" style={styles.row}>
+                  <Typography style={styles.baseText}>
+                    name:
+                    {data.name}
+                  </Typography>
+                  <Typography style={styles.baseText}>id: {data.id}</Typography>
+                </Row>
+
+                <Row justifyContent="space-between" style={styles.row}>
+                  <Typography style={styles.baseText}>
+                    temp:
+                    {data.main.feelsLike}
+                  </Typography>
+                  <Typography style={styles.baseText}>
+                    like: {data.main.temp}
+                  </Typography>
+                </Row>
+
+                <Row justifyContent="space-between" style={styles.row}>
+                  <Typography style={styles.baseText}>
+                    status: {data.weather[0].main}
+                  </Typography>
+                  <Typography style={styles.baseText}>
+                    sky: {data.weather[0].description}
+                  </Typography>
+                </Row>
+              </View>
+            )}
+          </RootScreen>
         </View>
-      )}
-
-      {(data || storge[citySearched]) && <View></View>}
-    </RootScreen>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 export default SearchScreen;
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  inner: {
+    flex: 1,
+  },
   root: {
     paddingHorizontal: ms(SIZES.padding),
     paddingTop: mvs(SIZES.margin),
   },
   row: {
-    flexDirection: "row",
-    width: "100%",
-    justifyContent: "space-between",
+    marginBottom: mvs(SIZES.base),
   },
-  errorConatiner: {
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: ms(SIZES.base),
-    paddingVertical: mvs(SIZES.padding),
-    borderWidth: 1,
-    borderColor: COLORS.danger,
-    marginTop: mvs(SIZES.base * 5),
+
+  resultConatiner: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: ms(SIZES.padding),
+    paddingVertical: mvs(SIZES.margin),
+    marginTop: mvs(SIZES.margin),
+    borderRadius: s(SIZES.radius),
   },
-  errorText: {
+  baseText: {
+    color: COLORS.white,
     ...FONTS.h3,
-    color: COLORS.danger,
   },
 });

@@ -56,8 +56,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     paddingHorizontal: ms(SIZES.padding),
-    bac: COLORS.black,
-    ...FONTS.h4,
+    ...FONTS.h2,
+    color: COLORS.primary,
   },
   btn: {
     backgroundColor: COLORS.primary,
