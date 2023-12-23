@@ -6,58 +6,74 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
-import React, {useState} from "react";
-import {useLazyQuery} from "@apollo/client";
+import React, {useCallback, useState} from "react";
+import {useQuery, useReadQuery} from "@apollo/client";
 import {GET_WEATHER_QUERY} from "../agent";
-import useStorge from "../hooks/useStorge";
 import {CustomInput, RootScreen, Row, Spinner, Typography} from "../components";
 import {COLORS, SCALE, SIZES, FONTS, ICONS} from "../constants";
-import {showMessage} from "react-native-flash-message";
 import {WeatherResponse} from "../type";
+import debounce from "lodash/debounce";
 
 const {s, ms, mvs} = SCALE;
 const {SearchIcon} = ICONS;
 
 const SearchScreen = () => {
   const [citySearched, setCitySearched] = useState("");
-  const [data, setDate] = useState<WeatherResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
 
-  const [getWeather] = useLazyQuery(GET_WEATHER_QUERY, {
+  const {data, loading, error} = useQuery<{
+    weatherByCity: WeatherResponse;
+  }>(GET_WEATHER_QUERY, {
     variables: {name: citySearched},
   });
+  console.log("loading", loading);
 
-  const {saveData, storge} = useStorge();
+  const debouncedHandleSearch = useCallback(debounce(setCitySearched, 500), []);
 
-  const handleOnSearch = async () => {
-    if (!citySearched.length) {
-      showMessage({
-        message: "add city name",
-        type: "danger",
-      });
-      return;
-    }
+  let content;
+  if (loading) {
+    content = <Spinner />;
+  } else if (error && citySearched.length) {
+    content = (
+      <View>
+        <Typography style={{...FONTS.h3, color: COLORS.danger}}>
+          no city with this name
+        </Typography>
+      </View>
+    );
+  } else if (data) {
+    content = (
+      <View style={styles.resultConatiner}>
+        <Row justifyContent="space-between" style={styles.row}>
+          <Typography style={styles.baseText}>
+            name:
+            {data.weatherByCity.name}
+          </Typography>
+          <Typography style={styles.baseText}>
+            id: {data.weatherByCity.id}
+          </Typography>
+        </Row>
 
-    setDate(null);
-    Keyboard.dismiss();
-    if (storge[citySearched]) {
-      setDate(storge[citySearched]);
-    } else {
-      setLoading(true);
+        <Row justifyContent="space-between" style={styles.row}>
+          <Typography style={styles.baseText}>
+            temp:
+            {data.weatherByCity.main.feelsLike}
+          </Typography>
+          <Typography style={styles.baseText}>
+            like: {data.weatherByCity.main.temp}
+          </Typography>
+        </Row>
 
-      getWeather()
-        .then(res => {
-          if (res?.data?.weatherByCity) {
-            setDate(res.data.weatherByCity);
-            saveData(
-              (res.data.weatherByCity.name as string).toLowerCase(),
-              res.data.weatherByCity,
-            );
-          }
-        })
-        .finally(() => setLoading(false));
-    }
-  };
+        <Row justifyContent="space-between" style={styles.row}>
+          <Typography style={styles.baseText}>
+            status: {data.weatherByCity.weather[0].main}
+          </Typography>
+          <Typography style={styles.baseText}>
+            sky: {data.weatherByCity.weather[0].description}
+          </Typography>
+        </Row>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -67,46 +83,12 @@ const SearchScreen = () => {
         <View style={styles.inner}>
           <RootScreen style={styles.root}>
             <CustomInput
-              onChangeText={text => setCitySearched(text)}
+              onChangeText={text => debouncedHandleSearch(text)}
               btnIcon={
                 <SearchIcon width={s(22)} height={s(22)} fill={COLORS.white} />
               }
-              value={citySearched}
-              onPress={handleOnSearch}
             />
-
-            {loading && <Spinner />}
-
-            {data && (
-              <View style={styles.resultConatiner}>
-                <Row justifyContent="space-between" style={styles.row}>
-                  <Typography style={styles.baseText}>
-                    name:
-                    {data.name}
-                  </Typography>
-                  <Typography style={styles.baseText}>id: {data.id}</Typography>
-                </Row>
-
-                <Row justifyContent="space-between" style={styles.row}>
-                  <Typography style={styles.baseText}>
-                    temp:
-                    {data.main.feelsLike}
-                  </Typography>
-                  <Typography style={styles.baseText}>
-                    like: {data.main.temp}
-                  </Typography>
-                </Row>
-
-                <Row justifyContent="space-between" style={styles.row}>
-                  <Typography style={styles.baseText}>
-                    status: {data.weather[0].main}
-                  </Typography>
-                  <Typography style={styles.baseText}>
-                    sky: {data.weather[0].description}
-                  </Typography>
-                </Row>
-              </View>
-            )}
+            {content}
           </RootScreen>
         </View>
       </TouchableWithoutFeedback>
